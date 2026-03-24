@@ -42,7 +42,7 @@
 /* Private variables ---------------------------------------------------------*/
 /* Disk status */
 static volatile DSTATUS Stat = STA_NOINIT;
-
+extern MMC_HandleTypeDef hmmc1;
 /* USER CODE END DECL */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -81,8 +81,9 @@ DSTATUS USER_initialize (
 )
 {
   /* USER CODE BEGIN INIT */
-    Stat = STA_NOINIT;
-    return Stat;
+  if (pdrv != 0)
+    return STA_NOINIT;
+  return 0;
   /* USER CODE END INIT */
 }
 
@@ -96,8 +97,9 @@ DSTATUS USER_status (
 )
 {
   /* USER CODE BEGIN STATUS */
-    Stat = STA_NOINIT;
-    return Stat;
+  if (pdrv != 0)
+    return STA_NOINIT;
+  return 0;
   /* USER CODE END STATUS */
 }
 
@@ -117,7 +119,17 @@ DRESULT USER_read (
 )
 {
   /* USER CODE BEGIN READ */
-    return RES_OK;
+  if(HAL_MMC_ReadBlocks(&hmmc1, buff, sector, count, HAL_MAX_DELAY)!=HAL_OK){
+    return RES_ERROR;
+  }
+  uint32_t timestart=HAL_GetTick();
+  while(HAL_MMC_GetCardState(&hmmc1)!=HAL_MMC_CARD_TRANSFER){
+    if((HAL_GetTick()-timestart)>=1000){
+      return RES_ERROR;
+    }
+  }
+  //HAL_MMC_WriteBlocks(hmmc, pData, BlockAdd, NumberOfBlocks, Timeout);
+  return RES_OK;
   /* USER CODE END READ */
 }
 
@@ -138,6 +150,15 @@ DRESULT USER_write (
 )
 {
   /* USER CODE BEGIN WRITE */
+  if(HAL_MMC_WriteBlocks(&hmmc1, buff, sector, count, HAL_MAX_DELAY)!=HAL_OK){
+    return RES_ERROR;
+  }
+  uint32_t timestart=HAL_GetTick();
+  while(HAL_MMC_GetCardState(&hmmc1)!=HAL_MMC_CARD_TRANSFER){
+    if((HAL_GetTick()-timestart)>=1000){
+      return RES_ERROR;
+    }
+  }
   /* USER CODE HERE */
     return RES_OK;
   /* USER CODE END WRITE */

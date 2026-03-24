@@ -23,11 +23,14 @@
 #include "quadspi.h"
 #include "sdmmc.h"
 #include "usart.h"
+#include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "bootloader.h"
+#include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,7 +63,36 @@ void PeriphCommonClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#define UPDATE_DIRECTORY "boot/qspi_xip_test.bin"
+#define SECONF_BANK_ADDR  0x91000000
 
+
+FATFS fs;
+char path[4];
+void sd_list_directory_recursive(const char *path, int depth) {
+  DIR dir;
+  FILINFO fno;
+  FRESULT res = f_opendir(&dir, path);
+  if (res != FR_OK) {
+    return;
+  }
+
+  while (1) {
+    res = f_readdir(&dir, &fno);
+    if (res != FR_OK || fno.fname[0] == 0) break;
+
+    const char *name = (*fno.fname) ? fno.fname : fno.fname;
+
+    if (fno.fattrib & AM_DIR) {
+      if (strcmp(name, ".") && strcmp(name, "..")) {
+        char newpath[128];
+        snprintf(newpath, sizeof(newpath), "%s/%s", path, name);
+        sd_list_directory_recursive(newpath, depth + 1);
+      }
+    }
+  }
+  f_closedir(&dir);
+}
 /* USER CODE END 0 */
 
 /**
@@ -73,6 +105,14 @@ int main(void)
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
+
+  /* Enable the CPU Cache */
+
+  /* Enable I-Cache---------------------------------------------------------*/
+  SCB_EnableICache();
+
+  /* Enable D-Cache---------------------------------------------------------*/
+  SCB_EnableDCache();
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -98,8 +138,47 @@ int main(void)
   MX_QUADSPI_Init();
   MX_SDMMC1_MMC_Init();
   MX_USART1_UART_Init();
-  MX_FATFS_Init();
+  //MX_USB_DEVICE_Init();
+  //MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+  if (CSP_QUADSPI_Init() != HAL_OK)
+  {
+    Error_Handler();
+  }
+  FATFS_LinkDriver(&USER_Driver,path);
+  disk_initialize(0);
+  if(f_mount(&fs, path, 1)!=FR_OK){
+    Error_Handler();
+  }
+  sd_list_directory_recursive(path,0);
+  FIL file;
+  UINT bytes_read;
+  uint8_t buffer[512];
+  FRESULT open_result=f_open(&file,UPDATE_DIRECTORY,FA_READ);
+  if(open_result!=FR_OK){
+    Error_Handler();
+  }
+  //uint8_t size_count=0;
+  //CSP_QSPI_EraseBlock(SECONF_BANK_ADDR,QSPI_ERASE_128K);
+  for(uint8_t i=0;i<112;i++){
+    f_read(&file,buffer,sizeof(buffer),&bytes_read);
+    CSP_QSPI_WriteMemory(buffer, (SECONF_BANK_ADDR+(i*512))&~0x90000000, 512);
+  }
+  f_mount(NULL, path, 1);
+
+
+//  DIR dir;
+//  FILINFO fno;
+//  FRESULT res = f_opendir(&dir, path);
+//  if (res != FR_OK){
+//    Error_Handler();
+//  }
+//
+//  res = f_readdir(&dir, &fno);
+//  if (res != FR_OK){
+//    Error_Handler();
+//  }
+  SCB_CleanInvalidateDCache();
   BootSwitchToExtFlash();
   /* USER CODE END 2 */
 
@@ -143,7 +222,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 2;
   RCC_OscInitStruct.PLL.PLLN = 70;
   RCC_OscInitStruct.PLL.PLLP = 4;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 14;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
@@ -182,8 +261,7 @@ void PeriphCommonClock_Config(void)
 
   /** Initializes the peripherals clock
   */
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_QSPI|RCC_PERIPHCLK_SDMMC
-                              |RCC_PERIPHCLK_USART1;
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SDMMC|RCC_PERIPHCLK_USART1;
   PeriphClkInitStruct.PLL2.PLL2M = 2;
   PeriphClkInitStruct.PLL2.PLL2N = 12;
   PeriphClkInitStruct.PLL2.PLL2P = 4;
@@ -192,7 +270,6 @@ void PeriphCommonClock_Config(void)
   PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
   PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOMEDIUM;
   PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
-  PeriphClkInitStruct.QspiClockSelection = RCC_QSPICLKSOURCE_PLL2;
   PeriphClkInitStruct.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL2;
   PeriphClkInitStruct.Usart16ClockSelection = RCC_USART16CLKSOURCE_PLL2;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)

@@ -6,8 +6,9 @@ pFunction JumpToApp;
 #define APP_ADDRESS 0x90000000
 
 void BootSwitchToExtFlash(void){
+
   SCB_DisableICache();
-  SCB_DisableDCache();
+//  SCB_DisableDCache();
 
   CSP_QSPI_EnableMemoryMappedMode();
   __DSB();
