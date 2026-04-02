@@ -2,7 +2,7 @@
 CAD.formats=
 CAD.pinconfig=
 CAD.provider=
-CORTEX_M7.CPU_DCache=Enabled
+CORTEX_M7.CPU_DCache=Disabled
 CORTEX_M7.CPU_ICache=Enabled
 CORTEX_M7.IPParameters=CPU_ICache,CPU_DCache
 FATFS.IPParameters=_USE_LFN
@@ -193,7 +193,7 @@ ProjectManager.ToolChainLocation=
 ProjectManager.UAScriptAfterPath=
 ProjectManager.UAScriptBeforePath=
 ProjectManager.UnderRoot=true
-ProjectManager.functionlistsort=1-MX_GPIO_Init-GPIO-false-HAL-true,4-MX_MDMA_Init-MDMA-false-HAL-true,2-MX_QUADSPI_Init-QUADSPI-false-HAL-true,3-MX_SDMMC1_MMC_Init-SDMMC1-false-HAL-true,4-MX_USART1_UART_Init-USART1-false-HAL-true,6-MX_FATFS_Init-FATFS-false-HAL-false,0-MX_CORTEX_M7_Init-CORTEX_M7-false-HAL-true
+ProjectManager.functionlistsort=1-MX_GPIO_Init-GPIO-false-HAL-true,3-MX_QUADSPI_Init-QUADSPI-false-HAL-true,4-MX_SDMMC1_MMC_Init-SDMMC1-false-HAL-true,5-MX_USART1_UART_Init-USART1-false-HAL-true,6-SystemClock_Config-RCC-false-HAL-false,7-MX_USB_DEVICE_Init-USB_DEVICE-false-HAL-false,0-MX_CORTEX_M7_Init-CORTEX_M7-false-HAL-true
 QUADSPI.ChipSelectHighTime=QSPI_CS_HIGH_TIME_3_CYCLE
 QUADSPI.ClockPrescaler=0
 QUADSPI.FlashSize=26

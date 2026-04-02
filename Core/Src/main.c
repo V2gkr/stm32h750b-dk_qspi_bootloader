@@ -64,35 +64,11 @@ void PeriphCommonClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 #define UPDATE_DIRECTORY "boot/qspi_xip_test.bin"
-#define SECONF_BANK_ADDR  0x91000000
-
+#define SECOND_BANK_ADDR  0x91000000
+#define APP_CRC_ADDR      0x00FFFFFC
 
 FATFS fs;
 char path[4];
-void sd_list_directory_recursive(const char *path, int depth) {
-  DIR dir;
-  FILINFO fno;
-  FRESULT res = f_opendir(&dir, path);
-  if (res != FR_OK) {
-    return;
-  }
-
-  while (1) {
-    res = f_readdir(&dir, &fno);
-    if (res != FR_OK || fno.fname[0] == 0) break;
-
-    const char *name = (*fno.fname) ? fno.fname : fno.fname;
-
-    if (fno.fattrib & AM_DIR) {
-      if (strcmp(name, ".") && strcmp(name, "..")) {
-        char newpath[128];
-        snprintf(newpath, sizeof(newpath), "%s/%s", path, name);
-        sd_list_directory_recursive(newpath, depth + 1);
-      }
-    }
-  }
-  f_closedir(&dir);
-}
 /* USER CODE END 0 */
 
 /**
@@ -110,9 +86,6 @@ int main(void)
 
   /* Enable I-Cache---------------------------------------------------------*/
   SCB_EnableICache();
-
-  /* Enable D-Cache---------------------------------------------------------*/
-  SCB_EnableDCache();
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -138,8 +111,8 @@ int main(void)
   MX_QUADSPI_Init();
   MX_SDMMC1_MMC_Init();
   MX_USART1_UART_Init();
-  //MX_USB_DEVICE_Init();
-  //MX_FATFS_Init();
+  MX_USB_DEVICE_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   if (CSP_QUADSPI_Init() != HAL_OK)
   {
@@ -150,7 +123,6 @@ int main(void)
   if(f_mount(&fs, path, 1)!=FR_OK){
     Error_Handler();
   }
-  sd_list_directory_recursive(path,0);
   FIL file;
   UINT bytes_read;
   uint8_t buffer[512];
@@ -159,25 +131,12 @@ int main(void)
     Error_Handler();
   }
   //uint8_t size_count=0;
-  //CSP_QSPI_EraseBlock(SECONF_BANK_ADDR,QSPI_ERASE_128K);
+  CSP_QSPI_EraseBlock(SECOND_BANK_ADDR&~0x90000000,QSPI_ERASE_128K);
   for(uint8_t i=0;i<112;i++){
     f_read(&file,buffer,sizeof(buffer),&bytes_read);
-    CSP_QSPI_WriteMemory(buffer, (SECONF_BANK_ADDR+(i*512))&~0x90000000, 512);
+    CSP_QSPI_WriteMemory(buffer, (SECOND_BANK_ADDR+(i*512))&~0x90000000, 512);
   }
   f_mount(NULL, path, 1);
-
-
-//  DIR dir;
-//  FILINFO fno;
-//  FRESULT res = f_opendir(&dir, path);
-//  if (res != FR_OK){
-//    Error_Handler();
-//  }
-//
-//  res = f_readdir(&dir, &fno);
-//  if (res != FR_OK){
-//    Error_Handler();
-//  }
   SCB_CleanInvalidateDCache();
   BootSwitchToExtFlash();
   /* USER CODE END 2 */
